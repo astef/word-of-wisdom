@@ -5,10 +5,9 @@ import (
 )
 
 type config struct {
-	Address                   string
-	ConnectionTimeoutMs       int
-	ConnectionReadBufferSize  int
-	ConnectionWriteBufferSize int
+	Address                  string
+	ConnectionTimeoutMs      int
+	ConnectionReadBufferSize int
 }
 
 func getConfig() *config {

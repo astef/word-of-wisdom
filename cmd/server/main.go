@@ -37,7 +37,7 @@ func main() {
 	// configuration
 	cfg := getConfig()
 
-	// pool for reusing buffers between connections
+	// pool for reusing buffers among connections
 	bp := NewBufferPool(cfg.ConnectionReadBufferSize)
 
 	// start tcp listener
@@ -45,7 +45,6 @@ func main() {
 	if err != nil {
 		logErr.Panicln(err.Error())
 	}
-
 	tcpListener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		logErr.Panicln(err.Error())
@@ -87,7 +86,7 @@ func handleConnection(cfg *config, bp *bufferPool, ctx context.Context, tcpConn 
 		}
 	}()
 
-	// borrow & release connection bufferPtr
+	// borrow & release connection buffers
 	buffers := bp.Borrow()
 	defer func() {
 		buffers.Release()
@@ -111,16 +110,17 @@ func handleConnection(cfg *config, bp *bufferPool, ctx context.Context, tcpConn 
 		return
 	}
 
-	// "request-reply" communication
+	// "request-response" communication
 	n, err := tcpConn.Read(buffers.ReadBuffer)
 	if err != nil {
 		logInfo.Println("error reading from connection", err.Error())
 		return
 	}
-	logDebug.Println("request bytes:", buffers.ReadBuffer)
+	requestBytes := buffers.ReadBuffer[:n]
+	logDebug.Printf("request bytes (%d) %X\n", len(requestBytes), requestBytes)
 
 	// decode request
-	decoder := gob.NewDecoder(bytes.NewReader(buffers.ReadBuffer[:n]))
+	decoder := gob.NewDecoder(bytes.NewReader(requestBytes))
 	var rq any
 	if err := decoder.Decode(&rq); err != nil {
 		logInfo.Println("error decoding request", err.Error())
@@ -152,6 +152,6 @@ func handleConnection(cfg *config, bp *bufferPool, ctx context.Context, tcpConn 
 		logInfo.Println("error writing to connection", err.Error())
 		return
 	}
-	logDebug.Println("response bytes:", rsBytes)
+	logDebug.Printf("response bytes (%d) %X\n", len(rsBytes), rsBytes)
 	logDebug.Println("elapsed:", time.Since(now).String())
 }

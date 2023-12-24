@@ -8,9 +8,6 @@ import (
 	"github.com/astef/word-of-wisdom/internal/api"
 )
 
-type message struct {
-}
-
 type handler struct {
 	logDebug *log.Logger
 	logInfo  *log.Logger
