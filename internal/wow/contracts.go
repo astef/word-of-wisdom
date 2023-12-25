@@ -1,4 +1,4 @@
-package api
+package wow
 
 import "encoding/gob"
 
@@ -17,7 +17,7 @@ type QuoteResponse struct {
 	Quote string
 }
 
-func RegisterContracts() {
+func init() {
 	// required for encoding/decoding to/from interface work
 	gob.Register(&ChallengeRequest{})
 	gob.Register(&ChallengeResponse{})

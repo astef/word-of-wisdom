@@ -30,10 +30,10 @@ type logger struct {
 func NewDefaultLogger() Logger {
 	return &logger{
 		// io.Discard is magic value, which prevents arguments from being formatted to a string
-		debug: stdlog.New(io.Discard, "DEBUG", logFlags),
-		info:  stdlog.New(os.Stdout, "INFO", logFlags),
-		warn:  stdlog.New(os.Stdout, "WARN", logFlags),
-		error: stdlog.New(os.Stderr, "ERROR", logFlags),
+		debug: stdlog.New(io.Discard, "DEBUG ", logFlags),
+		info:  stdlog.New(os.Stdout, "INFO ", logFlags),
+		warn:  stdlog.New(os.Stdout, "WARN ", logFlags),
+		error: stdlog.New(os.Stderr, "ERROR ", logFlags),
 	}
 }
 
@@ -47,9 +47,9 @@ func (l *logger) Warn() Printer { return l.warn }
 
 func (l *logger) Prefix(prefix string) Logger {
 	return &logger{
-		debug: stdlog.New(l.debug.Writer(), l.debug.Prefix()+" "+prefix, l.debug.Flags()),
-		info:  stdlog.New(l.info.Writer(), l.info.Prefix()+" "+prefix, l.info.Flags()),
-		warn:  stdlog.New(l.warn.Writer(), l.warn.Prefix()+" "+prefix, l.warn.Flags()),
-		error: stdlog.New(l.error.Writer(), l.error.Prefix()+" "+prefix, l.error.Flags()),
+		debug: stdlog.New(l.debug.Writer(), l.debug.Prefix()+prefix+" ", l.debug.Flags()),
+		info:  stdlog.New(l.info.Writer(), l.info.Prefix()+prefix+" ", l.info.Flags()),
+		warn:  stdlog.New(l.warn.Writer(), l.warn.Prefix()+prefix+" ", l.warn.Flags()),
+		error: stdlog.New(l.error.Writer(), l.error.Prefix()+prefix+" ", l.error.Flags()),
 	}
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/gob"
 	"net"
@@ -10,13 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/astef/word-of-wisdom/internal/api"
 	"github.com/astef/word-of-wisdom/internal/log"
 )
-
-func init() {
-	api.RegisterContracts()
-}
 
 func main() {
 	// logging
@@ -34,9 +28,6 @@ func main() {
 
 	// configuration
 	cfg := getConfig()
-
-	// pool for reusing buffers among connections
-	bp := NewBufferPool(cfg.ConnectionReadBufferSize)
 
 	// start tcp listener
 	addr, err := net.ResolveTCPAddr("tcp", cfg.Address)
@@ -65,13 +56,13 @@ func main() {
 			continue
 		}
 
-		go handleConnection(cfg, bp, ctx, tcpConn)
+		go handleConnection(cfg, ctx, tcpConn)
 	}
 
 	logger.Info().Println("server exited gracefully")
 }
 
-func handleConnection(cfg *config, bp *bufferPool, ctx context.Context, tcpConn *net.TCPConn) {
+func handleConnection(cfg *config, ctx context.Context, tcpConn *net.TCPConn) {
 	// connection logging
 	clientAddr := tcpConn.RemoteAddr().String()
 	logger := log.NewDefaultLogger().Prefix(clientAddr)
@@ -81,12 +72,6 @@ func handleConnection(cfg *config, bp *bufferPool, ctx context.Context, tcpConn 
 		if r := recover(); r != nil {
 			logger.Error().Println("recovered from panic", r)
 		}
-	}()
-
-	// borrow & release connection buffers
-	buffers := bp.Borrow()
-	defer func() {
-		buffers.Release()
 	}()
 
 	// close connection
@@ -108,16 +93,9 @@ func handleConnection(cfg *config, bp *bufferPool, ctx context.Context, tcpConn 
 	}
 
 	// "request-response" communication
-	n, err := tcpConn.Read(buffers.ReadBuffer)
-	if err != nil {
-		logger.Warn().Println("error reading from connection", err.Error())
-		return
-	}
-	requestBytes := buffers.ReadBuffer[:n]
-	logger.Debug().Printf("request bytes (%d) %X\n", len(requestBytes), requestBytes)
 
 	// decode request
-	decoder := gob.NewDecoder(bytes.NewReader(requestBytes))
+	decoder := gob.NewDecoder(tcpConn)
 	var rq any
 	if err := decoder.Decode(&rq); err != nil {
 		logger.Info().Println("error decoding request", err.Error())
@@ -133,17 +111,8 @@ func handleConnection(cfg *config, bp *bufferPool, ctx context.Context, tcpConn 
 	}
 
 	// encode response
-	if err := gob.NewEncoder(buffers.WriteBuffer).Encode(rs); err != nil {
-		logger.Error().Println("error encoding the response", err.Error())
+	if err := gob.NewEncoder(tcpConn).Encode(rs); err != nil {
+		logger.Info().Println("error encoding the response", err.Error())
 		return
 	}
-
-	// send response
-	rsBytes := buffers.WriteBuffer.Bytes()
-	if _, err := tcpConn.Write(rsBytes); err != nil {
-		logger.Info().Println("error writing to connection", err.Error())
-		return
-	}
-	logger.Debug().Printf("response bytes (%d) %X\n", len(rsBytes), rsBytes)
-	logger.Debug().Println("elapsed:", time.Since(now).String())
 }
