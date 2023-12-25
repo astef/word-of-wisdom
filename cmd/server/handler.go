@@ -3,16 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/astef/word-of-wisdom/internal/api"
+	"github.com/astef/word-of-wisdom/internal/log"
 )
 
 type handler struct {
-	logDebug *log.Logger
-	logInfo  *log.Logger
-	logWarn  *log.Logger
-	logErr   *log.Logger
+	logger log.Logger
 }
 
 func (h *handler) handle(ctx context.Context, rq any) (any, error) {
