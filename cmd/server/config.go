@@ -32,8 +32,8 @@ func getConfig() *config {
 		), // 300 bytes, so all solutions exist between [0; 256^300)
 		ChallengeDifficulty: cfgutil.MustReadIntWithDefault(
 			"WOW_CHALLENGE_DIFFICULTY",
-			25,
-		), // 25 bits, so the chance of solution is 1 / 2^25
+			20,
+		), // 20 bits, so the chance of solution is 1 / 2^20
 		ChallengeAvgSolutionNum: cfgutil.MustReadIntWithDefault(
 			"WOW_CHALLENGE_AVG_SOLUTION_NUM",
 			30,
@@ -55,6 +55,8 @@ func getConfig() *config {
 	cbs.Mul(cbs, big.NewInt(int64(cfg.ChallengeAvgSolutionNum)))
 	cfg.ChallengeBlockSize = cbs
 
+	// TODO: this is problematic in the distributed server scenario, this key should be shared among different servers,
+	// but for demo we'll just generate it at startup
 	cfg.ServerSecret = make([]byte, 512)
 	if _, err := rand.Read(cfg.ServerSecret); err != nil {
 		panic(err)

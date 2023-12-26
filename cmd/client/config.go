@@ -5,11 +5,13 @@ import (
 )
 
 type config struct {
-	Address string
+	Address   string
+	QuotesNum int
 }
 
 func getConfig() *config {
 	return &config{
-		Address: cfgutil.ReadStrWithDefault("WOW_ADDRESS", ":5000"),
+		Address:   cfgutil.ReadStrWithDefault("WOW_ADDRESS", ":5000"),
+		QuotesNum: cfgutil.MustReadIntWithDefault("WOW_QUOTES_NUM", 1),
 	}
 }

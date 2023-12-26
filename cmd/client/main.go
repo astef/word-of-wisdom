@@ -11,14 +11,28 @@ import (
 )
 
 func main() {
-
 	logger := log.NewDefaultLogger()
+
 	ctx := context.Background()
 
 	cfg := getConfig()
 
 	client := wow.NewClient(&wow.ClientConfig{Address: cfg.Address})
 
+	for i := 0; i < cfg.QuotesNum; i++ {
+		quote, err := getQuote(ctx, client, logger)
+		if err != nil {
+			logger.Error().Printf("Error getting a quote: %s", err.Error())
+			panic(err)
+		}
+		if quote != "" {
+			logger.Info().Println("Awarded with a quote:", quote)
+		}
+	}
+
+}
+
+func getQuote(ctx context.Context, client wow.Client, logger log.Logger) (string, error) {
 	chResp, err := client.GetChallenge(ctx, &wow.ChallengeRequest{})
 	if err != nil {
 		panic(err)
@@ -32,7 +46,7 @@ func main() {
 		if current.Cmp(end) >= 0 {
 			logger.Warn().
 				Println("Reached the end of block without finding any value. Unlucky, or server is too restrictive.")
-			break
+			return "", err
 		}
 
 		hash := sha256.New()
@@ -52,11 +66,10 @@ func main() {
 		})
 
 		if err != nil {
-			logger.Error().Printf("Error sending the solution: %s", err.Error())
-		} else {
-			logger.Info().Printf("Awarded with quote: %s", quoteResp.Quote)
+			return "", err
 		}
-		break
+
+		return quoteResp.Quote, nil
 	}
 }
 
