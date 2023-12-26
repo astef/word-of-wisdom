@@ -1,3 +1,3 @@
 module github.com/astef/word-of-wisdom
 
-go 1.21.0
+go 1.21.5
