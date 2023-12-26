@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime/debug"
+	"strings"
 	"syscall"
 	"time"
 
@@ -15,16 +17,6 @@ import (
 func main() {
 	// logging
 	logger := log.NewDefaultLogger()
-
-	// graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		exit := make(chan os.Signal, 1)
-		signal.Notify(exit, syscall.SIGINT, syscall.SIGTERM)
-		s := <-exit
-		logger.Info().Println("received shutdown signal: ", s)
-		cancel()
-	}()
 
 	// configuration
 	cfg := getConfig()
@@ -42,10 +34,24 @@ func main() {
 	}
 	defer tcpListener.Close()
 
+	// graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		exit := make(chan os.Signal, 1)
+		signal.Notify(exit, syscall.SIGINT, syscall.SIGTERM)
+		s := <-exit
+		logger.Info().Println("received shutdown signal: ", s)
+		cancel()
+		// tcpListener.AcceptTCP() may hang when not accepting connections, so forcibly close
+		tcpListener.Close()
+	}()
+
+	logger.Info().Println("listening on", cfg.Address)
+
 	for {
 		// check shutdown
-		if _, done := <-ctx.Done(); done {
-			logger.Info().Println("shutting down")
+		if err := ctx.Err(); err != nil {
+			logger.Info().Println("shutting down, because:", err.Error())
 			break
 		}
 
@@ -70,7 +76,7 @@ func handleConnection(cfg *config, ctx context.Context, tcpConn *net.TCPConn) {
 	// recover from panics
 	defer func() {
 		if r := recover(); r != nil {
-			logger.Error().Println("recovered from panic", r)
+			logger.Error().Println("recovered from panic:", r, "\n", string(debug.Stack()))
 		}
 	}()
 
@@ -103,7 +109,19 @@ func handleConnection(cfg *config, ctx context.Context, tcpConn *net.TCPConn) {
 	}
 
 	// invoke handler
-	h := &handler{logger: logger}
+	clientIp, _, _ := strings.Cut(clientAddr, ":")
+	h := &handler{
+		logger:   logger,
+		clientIP: clientIp,
+		// important to have fresh time here
+		now:                     time.Now(),
+		serverSecret:            cfg.ServerSecret,
+		challengeExpirationSec:  cfg.ChallengeExpirationSec,
+		challengeDataSize:       cfg.ChallengeDataSize,
+		challengeDifficulty:     cfg.ChallengeDifficulty,
+		challengeAvgSolutionNum: cfg.ChallengeAvgSolutionNum,
+		challengeBlockSize:      cfg.ChallengeBlockSize,
+	}
 	rs, err := h.handle(ctx, rq)
 	if err != nil {
 		logger.Info().Println("error handling the request", err.Error())

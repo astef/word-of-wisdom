@@ -43,7 +43,7 @@ func request[T any](ctx context.Context, addr string, request any) (*T, error) {
 		conn.Close()
 	}()
 
-	if err := gob.NewEncoder(conn).Encode(request); err != nil {
+	if err := gob.NewEncoder(conn).Encode(&request); err != nil {
 		return nil, fmt.Errorf("sending request: %w", err)
 	}
 
