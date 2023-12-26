@@ -1,0 +1,41 @@
+version: '3.7'
+
+services:
+  server:
+    build:
+      context: ./
+      dockerfile: ./server.Dockerfile
+    container_name: wow-server
+    environment:
+      # WOW_ADDRESS: ":5000"
+      # WOW_CONN_TIMEOUT: "1000"
+      # WOW_CONN_READ_BUFFER_SIZE: "65536"
+      # WOW_CHALLENGE_EXPIRATION_SEC: 3600
+      # WOW_CHALLENGE_DATA_SIZE: 300
+      WOW_CHALLENGE_DIFFICULTY: 20
+      # WOW_CHALLENGE_AVG_SOLUTION_NUM: 30
+    ports:
+      - "5000:5000"
+    networks:
+      - wow-network
+    stdin_open: true
+    tty: true
+
+  client:
+    build:
+      context: ./
+      dockerfile: ./client.Dockerfile
+    container_name: wow-client
+    environment:
+      WOW_ADDRESS: "server:5000"
+      WOW_QUOTES_NUM: 3
+    networks:
+      - wow-network
+    depends_on:
+      - server
+    stdin_open: true
+    tty: true
+
+networks:
+  wow-network:
+    driver: bridge
