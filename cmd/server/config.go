@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"os"
 
 	cfgutil "github.com/astef/word-of-wisdom/internal/config"
 )
@@ -22,21 +23,32 @@ type config struct {
 
 func getConfig() *config {
 	cfg := &config{
-		Address:                  cfgutil.ReadStrWithDefault("WOW_ADDRESS", ":5000"),
-		ConnectionTimeoutMs:      cfgutil.MustReadIntWithDefault("WOW_CONN_TIMEOUT", 1000),
-		ConnectionReadBufferSize: cfgutil.MustReadIntWithDefault("WOW_CONN_READ_BUFFER_SIZE", 64*1024), // 64KB
-		ChallengeExpirationSec:   cfgutil.MustReadIntWithDefault("WOW_CHALLENGE_EXPIRATION_SEC", 3600), // 60 minutes
-		ChallengeDataSize: cfgutil.MustReadIntWithDefault(
+		Address:             cfgutil.ReadStrWithDefault("WOW_ADDRESS", ":5000"),
+		ConnectionTimeoutMs: cfgutil.ReadIntWithDefault("WOW_CONN_TIMEOUT", 1000, onConfigFailure),
+		ConnectionReadBufferSize: cfgutil.ReadIntWithDefault(
+			"WOW_CONN_READ_BUFFER_SIZE",
+			64*1024,
+			onConfigFailure,
+		), // 64KB
+		ChallengeExpirationSec: cfgutil.ReadIntWithDefault(
+			"WOW_CHALLENGE_EXPIRATION_SEC",
+			3600,
+			onConfigFailure,
+		), // 60 minutes
+		ChallengeDataSize: cfgutil.ReadIntWithDefault(
 			"WOW_CHALLENGE_DATA_SIZE",
 			300,
+			onConfigFailure,
 		), // 300 bytes, so all solutions exist between [0; 256^300)
-		ChallengeDifficulty: cfgutil.MustReadIntWithDefault(
+		ChallengeDifficulty: cfgutil.ReadIntWithDefault(
 			"WOW_CHALLENGE_DIFFICULTY",
 			20,
+			onConfigFailure,
 		), // 20 bits, so the chance of solution is 1 / 2^20
-		ChallengeAvgSolutionNum: cfgutil.MustReadIntWithDefault(
+		ChallengeAvgSolutionNum: cfgutil.ReadIntWithDefault(
 			"WOW_CHALLENGE_AVG_SOLUTION_NUM",
 			30,
+			onConfigFailure,
 		), // on average, 30 solutions should exist on the data range allocated to client
 	}
 
@@ -59,13 +71,20 @@ func getConfig() *config {
 	// but for demo we'll just generate it at startup
 	cfg.ServerSecret = make([]byte, 512)
 	if _, err := rand.Read(cfg.ServerSecret); err != nil {
-		panic(err)
+		print("failed generating random data")
+		os.Exit(1)
 	}
 	return cfg
 }
 
 func checkBounds(name string, value, validFrom, validTo int) {
 	if value < validFrom || value >= validTo {
-		panic(fmt.Sprintf("expected %s to be in range [%d; %d), got %d", name, validFrom, validTo, value))
+		print(fmt.Sprintf("expected %s to be in range [%d; %d), got %d", name, validFrom, validTo, value))
+		os.Exit(1)
 	}
+}
+
+func onConfigFailure(err error) {
+	print(err.Error())
+	os.Exit(1)
 }

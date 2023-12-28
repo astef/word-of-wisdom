@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"os"
 	"strings"
 )
 
@@ -13,7 +14,8 @@ var quotes []string
 func init() {
 	data, err := f.ReadFile("quotes.txt")
 	if err != nil {
-		panic(err)
+		print("failed reading embedded file")
+		os.Exit(1)
 	}
 
 	quotes = strings.Split(string(data), "\n")

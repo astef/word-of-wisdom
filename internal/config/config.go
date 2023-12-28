@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"math/big"
 	"os"
 	"strconv"
@@ -14,7 +15,7 @@ func ReadStrWithDefault(key string, defaultValue string) string {
 	return value
 }
 
-func MustReadBigIntWithDefault(key string, defaultValue string) *big.Int {
+func ReadBigIntWithDefault(key string, defaultValue string, onFailure func(err error)) *big.Int {
 	value := os.Getenv(key)
 	if value == "" {
 		value = defaultValue
@@ -23,12 +24,12 @@ func MustReadBigIntWithDefault(key string, defaultValue string) *big.Int {
 	result := &big.Int{}
 	result, success := result.SetString(value, 0)
 	if !success {
-		panic("failed parsing env var value " + value)
+		onFailure(errors.New("failed parsing env var value " + value))
 	}
 	return result
 }
 
-func MustReadIntWithDefault(key string, defaultValue int) int {
+func ReadIntWithDefault(key string, defaultValue int, onFailure func(err error)) int {
 	valueStr := os.Getenv(key)
 	if valueStr == "" {
 		return defaultValue
@@ -36,7 +37,7 @@ func MustReadIntWithDefault(key string, defaultValue int) int {
 
 	value, err := strconv.Atoi(valueStr)
 	if err != nil {
-		panic(err)
+		onFailure(err)
 	}
 
 	return value

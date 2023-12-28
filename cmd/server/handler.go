@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -29,18 +28,18 @@ type handler struct {
 	challengeBlockSize      *big.Int
 }
 
-func (h *handler) handle(ctx context.Context, rq any) (any, error) {
+func (h *handler) handle(rq any) (any, error) {
 	switch v := rq.(type) {
 	case *wow.ChallengeRequest:
-		return h.requestChallenge(ctx, v)
+		return h.requestChallenge()
 	case *wow.QuoteRequest:
-		return h.requestQuote(ctx, v)
+		return h.requestQuote(v)
 	default:
 		return nil, fmt.Errorf("unknown request type: %T", v)
 	}
 }
 
-func (h *handler) requestChallenge(ctx context.Context, rq *wow.ChallengeRequest) (*wow.ChallengeResponse, error) {
+func (h *handler) requestChallenge() (*wow.ChallengeResponse, error) {
 	challenge, err := h.generateChallenge()
 	if err != nil {
 		return nil, err
@@ -57,7 +56,7 @@ func (h *handler) requestChallenge(ctx context.Context, rq *wow.ChallengeRequest
 	}, nil
 }
 
-func (h *handler) requestQuote(ctx context.Context, rq *wow.QuoteRequest) (*wow.QuoteResponse, error) {
+func (h *handler) requestQuote(rq *wow.QuoteRequest) (*wow.QuoteResponse, error) {
 	if err := h.validateSignature(rq.Challenge, rq.Signature); err != nil {
 		return nil, err
 	}

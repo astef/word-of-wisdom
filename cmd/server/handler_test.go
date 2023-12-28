@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"math/big"
 	"reflect"
 	"testing"
@@ -23,8 +22,7 @@ func Test_handler_handle(t *testing.T) {
 		challengeBlockSize      *big.Int
 	}
 	type args struct {
-		ctx context.Context
-		rq  any
+		rq any
 	}
 	tests := []struct {
 		name    string
@@ -48,7 +46,7 @@ func Test_handler_handle(t *testing.T) {
 				challengeAvgSolutionNum: tt.fields.challengeAvgSolutionNum,
 				challengeBlockSize:      tt.fields.challengeBlockSize,
 			}
-			got, err := h.handle(tt.args.ctx, tt.args.rq)
+			got, err := h.handle(tt.args.rq)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("handler.handle() error = %v, wantErr %v", err, tt.wantErr)
 				return

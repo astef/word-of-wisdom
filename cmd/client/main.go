@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"math/big"
 	"math/bits"
+	"os"
 
 	"github.com/astef/word-of-wisdom/internal/log"
 	"github.com/astef/word-of-wisdom/internal/wow"
@@ -23,7 +24,7 @@ func main() {
 		quote, err := getQuote(ctx, client, logger)
 		if err != nil {
 			logger.Error().Printf("Error getting a quote: %s", err.Error())
-			panic(err)
+			os.Exit(1)
 		}
 		if quote != "" {
 			logger.Info().Println("Awarded with a quote:", quote)
@@ -35,7 +36,8 @@ func main() {
 func getQuote(ctx context.Context, client wow.Client, logger log.Logger) (string, error) {
 	chResp, err := client.GetChallenge(ctx, &wow.ChallengeRequest{})
 	if err != nil {
-		panic(err)
+		logger.Error().Printf("Error getting challenge: %s", err.Error())
+		os.Exit(1)
 	}
 	logger.Info().Printf("Got challenge, start solving.")
 

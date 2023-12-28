@@ -25,12 +25,12 @@ func main() {
 	addr, err := net.ResolveTCPAddr("tcp", cfg.Address)
 	if err != nil {
 		logger.Error().Println(err.Error())
-		panic(err)
+		os.Exit(1)
 	}
 	tcpListener, err := net.ListenTCP("tcp", addr)
 	if err != nil {
 		logger.Error().Println(err.Error())
-		panic(err)
+		os.Exit(1)
 	}
 	defer tcpListener.Close()
 
@@ -62,13 +62,13 @@ func main() {
 			continue
 		}
 
-		go handleConnection(cfg, ctx, tcpConn)
+		go handleConnection(cfg, tcpConn)
 	}
 
 	logger.Info().Println("server exited gracefully")
 }
 
-func handleConnection(cfg *config, ctx context.Context, tcpConn *net.TCPConn) {
+func handleConnection(cfg *config, tcpConn *net.TCPConn) {
 	// connection logging
 	clientAddr := tcpConn.RemoteAddr().String()
 	logger := log.NewDefaultLogger().Prefix(clientAddr)
@@ -88,18 +88,11 @@ func handleConnection(cfg *config, ctx context.Context, tcpConn *net.TCPConn) {
 	}()
 
 	// configure connection
-	now := time.Now()
-	if err := tcpConn.SetDeadline(now.Add(time.Duration(cfg.ConnectionTimeoutMs) * time.Millisecond)); err != nil {
-		logger.Warn().Println("error setting connection timeout", err.Error())
-		return
-	}
-	if err := tcpConn.SetReadBuffer(cfg.ConnectionReadBufferSize); err != nil {
-		logger.Warn().Println("error setting connection buffer size", err.Error())
+	if err := configureTCPConn(cfg, tcpConn, logger); err != nil {
 		return
 	}
 
 	// "request-response" communication
-
 	// decode request
 	decoder := gob.NewDecoder(tcpConn)
 	var rq any
@@ -109,10 +102,10 @@ func handleConnection(cfg *config, ctx context.Context, tcpConn *net.TCPConn) {
 	}
 
 	// invoke handler
-	clientIp, _, _ := strings.Cut(clientAddr, ":")
+	clientIP, _, _ := strings.Cut(clientAddr, ":")
 	h := &handler{
 		logger:   logger,
-		clientIP: clientIp,
+		clientIP: clientIP,
 		// important to have fresh time here
 		now:                     time.Now(),
 		serverSecret:            cfg.ServerSecret,
@@ -122,7 +115,7 @@ func handleConnection(cfg *config, ctx context.Context, tcpConn *net.TCPConn) {
 		challengeAvgSolutionNum: cfg.ChallengeAvgSolutionNum,
 		challengeBlockSize:      cfg.ChallengeBlockSize,
 	}
-	rs, err := h.handle(ctx, rq)
+	rs, err := h.handle(rq)
 	if err != nil {
 		logger.Info().Println("error handling the request", err.Error())
 		return
@@ -133,4 +126,16 @@ func handleConnection(cfg *config, ctx context.Context, tcpConn *net.TCPConn) {
 		logger.Info().Println("error encoding the response", err.Error())
 		return
 	}
+}
+
+func configureTCPConn(cfg *config, tcpConn *net.TCPConn, logger log.Logger) error {
+	if err := tcpConn.SetDeadline(time.Now().Add(time.Duration(cfg.ConnectionTimeoutMs) * time.Millisecond)); err != nil {
+		logger.Warn().Println("error setting connection timeout", err.Error())
+		return err
+	}
+	if err := tcpConn.SetReadBuffer(cfg.ConnectionReadBufferSize); err != nil {
+		logger.Warn().Println("error setting connection buffer size", err.Error())
+		return err
+	}
+	return nil
 }

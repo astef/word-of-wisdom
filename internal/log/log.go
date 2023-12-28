@@ -8,7 +8,7 @@ import (
 
 const logFlags = stdlog.Ldate | stdlog.Ltime | stdlog.Lmicroseconds | stdlog.Lshortfile | stdlog.LUTC | stdlog.Lmsgprefix
 
-// copies methods of standard library log
+// Copies methods of standard library log.
 type Printer interface {
 	Print(v ...any)
 	Printf(format string, v ...any)
