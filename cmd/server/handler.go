@@ -3,13 +3,12 @@ package main
 import (
 	"bytes"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
-	mathrand "math/rand"
 	"time"
 
 	"github.com/astef/word-of-wisdom/internal/log"
@@ -26,6 +25,8 @@ type handler struct {
 	challengeDifficulty     int
 	challengeAvgSolutionNum int
 	challengeBlockSize      *big.Int
+	cryptoRand              io.Reader
+	quoteRandIntn           func(n int) int
 }
 
 func (h *handler) handle(rq any) (any, error) {
@@ -68,7 +69,7 @@ func (h *handler) requestQuote(rq *wow.QuoteRequest) (*wow.QuoteResponse, error)
 		return nil, err
 	}
 
-	quoteIndex := mathrand.Intn(len(quotes))
+	quoteIndex := h.quoteRandIntn(len(quotes))
 	h.logger.Info().Printf("solution is valid, rewarding with quote #%d", quoteIndex)
 
 	return &wow.QuoteResponse{Quote: quotes[quoteIndex]}, nil
@@ -77,7 +78,7 @@ func (h *handler) requestQuote(rq *wow.QuoteRequest) (*wow.QuoteResponse, error)
 func (h *handler) generateChallenge() (*wow.Challenge, error) {
 	// generate random blockStart
 	blockStart := make([]byte, h.challengeDataSize)
-	if _, err := rand.Read(blockStart); err != nil {
+	if _, err := h.cryptoRand.Read(blockStart); err != nil {
 		return nil, err
 	}
 

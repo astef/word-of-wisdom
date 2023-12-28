@@ -26,9 +26,13 @@ func main() {
 			logger.Error().Printf("Error getting a quote: %s", err.Error())
 			os.Exit(1)
 		}
-		if quote != "" {
-			logger.Info().Println("Awarded with a quote:", quote)
+		if quote == "" {
+			logger.Info().Println("No solution, trying another challenge")
+			i--
+			continue
 		}
+
+		logger.Info().Println("Awarded with a quote:", quote)
 	}
 
 }
@@ -41,38 +45,42 @@ func getQuote(ctx context.Context, client wow.Client, logger log.Logger) (string
 	}
 	logger.Info().Printf("Got challenge, start solving.")
 
-	current := big.NewInt(0).SetBytes(chResp.Challenge.BlockStart)
-	end := big.NewInt(0).SetBytes(chResp.Challenge.BlockEnd)
+	solution, hashSum := findSolution(
+		chResp.Challenge.BlockStart,
+		chResp.Challenge.BlockEnd,
+		chResp.Challenge.Difficulty,
+	)
+	if solution == nil {
+		return "", nil
+	}
 
-	for {
-		if current.Cmp(end) >= 0 {
-			logger.Warn().
-				Println("Reached the end of block without finding any value. Unlucky, or server is too restrictive.")
-			return "", err
-		}
+	logger.Info().Printf("Found solution: %x with checksum: %x", solution, hashSum)
+	quoteResp, err := client.GetQuote(ctx, &wow.QuoteRequest{
+		ChallengeResponse: *chResp,
+		Solution:          solution,
+	})
 
+	if err != nil {
+		return "", err
+	}
+
+	return quoteResp.Quote, nil
+}
+
+func findSolution(start, end []byte, difficulty int) ([]byte, []byte) {
+	startInt := big.NewInt(0).SetBytes(start)
+	endInt := big.NewInt(0).SetBytes(end)
+	incr := big.NewInt(1)
+	for current := startInt; current.Cmp(endInt) < 0; current.Add(current, incr) {
 		hash := sha256.New()
 		hash.Write(current.Bytes())
 		hashSum := hash.Sum(nil)
 
-		if leadingZeroBits(hashSum) < chResp.Challenge.Difficulty {
-			current.Add(current, big.NewInt(1))
-			continue
+		if leadingZeroBits(hashSum) >= difficulty {
+			return current.Bytes(), hashSum
 		}
-
-		logger.Info().Printf("Found solution: %x with checksum: %x", current.Bytes(), hashSum)
-
-		quoteResp, err := client.GetQuote(ctx, &wow.QuoteRequest{
-			ChallengeResponse: *chResp,
-			Solution:          current.Bytes(),
-		})
-
-		if err != nil {
-			return "", err
-		}
-
-		return quoteResp.Quote, nil
 	}
+	return nil, nil
 }
 
 func leadingZeroBits(b []byte) int {

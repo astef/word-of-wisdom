@@ -37,6 +37,16 @@ func NewDefaultLogger() Logger {
 	}
 }
 
+func NewDiscardLogger() Logger {
+	discard := stdlog.New(io.Discard, "", 0)
+	return &logger{
+		debug: discard,
+		info:  discard,
+		warn:  discard,
+		error: discard,
+	}
+}
+
 func (l *logger) Debug() Printer { return l.debug }
 
 func (l *logger) Error() Printer { return l.error }

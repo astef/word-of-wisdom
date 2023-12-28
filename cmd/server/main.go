@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/gob"
+	mathrand "math/rand"
 	"net"
 	"os"
 	"os/signal"
@@ -114,6 +116,8 @@ func handleConnection(cfg *config, tcpConn *net.TCPConn) {
 		challengeDifficulty:     cfg.ChallengeDifficulty,
 		challengeAvgSolutionNum: cfg.ChallengeAvgSolutionNum,
 		challengeBlockSize:      cfg.ChallengeBlockSize,
+		cryptoRand:              rand.Reader,
+		quoteRandIntn:           mathrand.Intn,
 	}
 	rs, err := h.handle(rq)
 	if err != nil {

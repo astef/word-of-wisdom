@@ -62,10 +62,7 @@ func getConfig() *config {
 	checkBounds("ChallengeAvgSolutionNum", cfg.ChallengeAvgSolutionNum, 1, 100)
 
 	// computed values
-	cbs := big.NewInt(2)
-	cbs.Exp(cbs, big.NewInt(int64(cfg.ChallengeDifficulty)), nil)
-	cbs.Mul(cbs, big.NewInt(int64(cfg.ChallengeAvgSolutionNum)))
-	cfg.ChallengeBlockSize = cbs
+	cfg.ChallengeBlockSize = challengeBlockSize(cfg.ChallengeDifficulty, cfg.ChallengeAvgSolutionNum)
 
 	// TODO: this is problematic in the distributed server scenario, this key should be shared among different servers,
 	// but for demo we'll just generate it at startup
@@ -75,6 +72,13 @@ func getConfig() *config {
 		os.Exit(1)
 	}
 	return cfg
+}
+
+func challengeBlockSize(difficulty int, avgSolutionNum int) *big.Int {
+	cbs := big.NewInt(2)
+	cbs.Exp(cbs, big.NewInt(int64(difficulty)), nil)
+	cbs.Mul(cbs, big.NewInt(int64(avgSolutionNum)))
+	return cbs
 }
 
 func checkBounds(name string, value, validFrom, validTo int) {
